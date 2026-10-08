@@ -65,6 +65,9 @@ var ZoteroCodexPlugin = {
         return ZoteroCodexPlugin.client?.binaryPath || "";
       },
       reconnect: () => this.client.reconnect(),
+      externalDraftVersion: 1,
+      prepareExternalDraft: (attachmentID, text, tabID) =>
+        this.sidebar.prepareExternalDraft(attachmentID, text, tabID),
     };
     pluginLog(`Initialized ${version}`);
   },

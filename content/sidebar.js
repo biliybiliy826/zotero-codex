@@ -3264,6 +3264,62 @@
       return false;
     }
 
+    // Companion extensions may stage a prompt for the same PDF. This only
+    // edits the composer; sending remains an explicit reader action.
+    async prepareExternalDraft(attachmentID, text, tabID = "") {
+      const id = Number(attachmentID);
+      const draft = String(text || "").trim();
+      if (!Number.isSafeInteger(id) || id <= 0 || !draft || draft.length > 20_000) {
+        throw new Error("Invalid Codex draft or PDF attachment");
+      }
+      const reader = (global.Zotero.Reader._readers || []).find(candidate =>
+        Number(candidate.itemID) === id && (!tabID || candidate.tabID === tabID));
+      if (!reader) throw new Error("Open this PDF in Zotero before asking Codex");
+      if (!await this.revealReaderPane(reader)) {
+        throw new Error("Could not open the Codex pane for this PDF");
+      }
+
+      // Zotero creates pane views asynchronously. Wait until its item switch
+      // and paper conversation have finished before touching the composer.
+      const deadline = Date.now() + 20_000;
+      let view;
+      let initializationRequested = false;
+      while (Date.now() < deadline) {
+        view = [...this.views.values()].find(candidate => {
+          const details = candidate.body.closest?.("item-details");
+          return details?.tabID === reader.tabID || details?.dataset?.tabId === reader.tabID;
+        });
+        // A sidenav click can render a collapsed section without invoking
+        // Zotero's async-render callback. Initialize that view explicitly.
+        if (view && !view.initialized && !view.initializing && !initializationRequested) {
+          initializationRequested = true;
+          void view.initialize();
+        }
+        if (initializationRequested && view && !view.initializing && !view.initialized &&
+            view.elements.status.dataset.state === "error") {
+          throw new Error(view.elements.statusText.textContent || "Could not connect Codex");
+        }
+        if (view?.initialized && !view.contextTransitioning &&
+            Number(view.context?.attachmentID) === id && !view.destroyed) break;
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+      if (!view?.initialized || view.contextTransitioning ||
+          Number(view.context?.attachmentID) !== id || view.destroyed) {
+        throw new Error("Codex did not finish opening the matching paper pane");
+      }
+      if (view.editingMessage) {
+        throw new Error("Finish editing the current Codex message before adding a draft");
+      }
+      const input = view.elements.input;
+      const existing = input.value.trim();
+      input.value = existing ? `${existing}\n\n${draft}` : draft;
+      view.resizeComposer();
+      view.updateComposerState();
+      input.focus();
+      input.setSelectionRange?.(input.value.length, input.value.length);
+      return { attachmentID: id, appended: Boolean(existing) };
+    }
+
     addSelection(attachmentID, value) {
       const id = Number(attachmentID);
       if (!Number.isSafeInteger(id) || !value?.text) return false;

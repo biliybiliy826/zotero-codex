@@ -37,6 +37,7 @@ Conversations use your existing Codex sign-in and remain available across Codex 
 - Automatically load the enabled, available official OpenAI Zotero skill to search papers, read indexed text, export BibTeX, insert citation keys, or import references. Normal chat continues when the skill is unavailable.
 - Selected PDF text is attached to the next message. A new selection replaces the current selection; “Add to Codex” pins a selection so you can include several passages.
 - Stop a running response and handle command, file, and permission approvals in the sidebar.
+- Companion Zotero extensions can stage an editable prompt in the matching open PDF pane via `Zotero.CodexSidebar.prepareExternalDraft(attachmentID, text, tabID)`. The API reports `externalDraftVersion: 1`, preserves existing unsent text, and never sends automatically.
 - New chats default to a `read-only` sandbox with `on-request` approvals. The plugin itself does not directly modify Zotero items.
 
 ## Requirements and CLI detection
