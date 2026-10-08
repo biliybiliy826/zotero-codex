@@ -44,3 +44,20 @@ test("rejects invalid attachments and does not overwrite an edited message", asy
   await assert.rejects(manager.prepareExternalDraft(42, "new", "pdf-tab"), /Finish editing/);
   assert.equal(input.value, "");
 });
+
+test("initializes a pane that Zotero rendered without its async callback", async () => {
+  const { manager, input, view } = fixture();
+  view.initialized = false;
+  let starts = 0;
+  view.initialize = async () => {
+    starts++;
+    view.initializing = true;
+    await Promise.resolve();
+    view.initialized = true;
+    view.initializing = false;
+  };
+
+  await manager.prepareExternalDraft(42, "Explain the guide", "pdf-tab");
+  assert.equal(starts, 1);
+  assert.equal(input.value, "Explain the guide");
+});
